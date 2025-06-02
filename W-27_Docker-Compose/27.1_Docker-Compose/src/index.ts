@@ -1,7 +1,7 @@
-import { PrismaClient } from "./generated/prisma";
+import { PrismaClient } from "@prisma/client";
 const prismaClient = new PrismaClient();
 import express from "express";
-const app = express()
+const app = express();
 
 app.post("/", async (req, res) => {
   const newUser = await prismaClient.user.create({
@@ -15,7 +15,7 @@ app.post("/", async (req, res) => {
     User: newUser,
   });
 });
- 
+
 app.get("/", async (req, res) => {
   const users = await prismaClient.user.findMany();
   res.json({
@@ -24,8 +24,6 @@ app.get("/", async (req, res) => {
   });
 });
 
-
 app.listen(3000, () => {
-  console.log("Server is running on port 3000");
+  console.log("Yes, Server is running on port 3000");
 });
-   
