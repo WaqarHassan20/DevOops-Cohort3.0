@@ -1,101 +1,126 @@
-import Image, { type ImageProps } from "next/image";
-import { Button } from "@repo/ui/button";
-import styles from "./page.module.css";
+import { prismaClient } from "db/client";
 
-type Props = Omit<ImageProps, "src"> & {
-  srcLight: string;
-  srcDark: string;
-};
+interface User {
+  id: string;
+  username: string;
+  password: string;
+}
 
-const ThemeImage = (props: Props) => {
-  const { srcLight, srcDark, ...rest } = props;
+export default async function Page() {
+  const users = await prismaClient.user.findMany();
 
   return (
-    <>
-      <Image {...rest} src={srcLight} className="imgLight" />
-      <Image {...rest} src={srcDark} className="imgDark" />
-    </>
-  );
-};
+    <div style={{
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      minHeight: '100vh',
+      backgroundColor: '#0f172a',
+      color: '#e2e8f0',
+      padding: '2rem'
+    }}>
+      {/* Header */}
+      <header style={{
+        maxWidth: '800px',
+        margin: '0 auto 2rem',
+        paddingBottom: '1rem',
+        borderBottom: '1px solid #1e293b'
+      }}>
+        <h1 style={{
+          fontSize: '1.875rem',
+          fontWeight: '700',
+          color: '#f8fafc',
+          marginBottom: '0.5rem'
+        }}>User Management</h1>
+        <p style={{
+          color: '#94a3b8',
+          margin: 0
+        }}>{users.length} registered users</p>
+      </header>
 
-export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <ThemeImage
-          className={styles.logo}
-          srcLight="turborepo-dark.svg"
-          srcDark="turborepo-light.svg"
-          alt="Turborepo logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>apps/web/app/page.tsx</code>
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new/clone?demo-description=Learn+to+implement+a+monorepo+with+a+two+Next.js+sites+that+has+installed+three+local+packages.&demo-image=%2F%2Fimages.ctfassets.net%2Fe5382hct74si%2F4K8ZISWAzJ8X1504ca0zmC%2F0b21a1c6246add355e55816278ef54bc%2FBasic.png&demo-title=Monorepo+with+Turborepo&demo-url=https%3A%2F%2Fexamples-basic-web.vercel.sh%2F&from=templates&project-name=Monorepo+with+Turborepo&repository-name=monorepo-turborepo&repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fturborepo%2Ftree%2Fmain%2Fexamples%2Fbasic&root-directory=apps%2Fdocs&skippable-integrations=1&teamSlug=vercel&utm_source=create-turbo"
-            target="_blank"
-            rel="noopener noreferrer"
+      {/* Users Container */}
+      <main style={{
+        maxWidth: '800px',
+        margin: '0 auto'
+      }}>
+        {users.map((user: User) => (
+          <div 
+            key={user.id}
+            style={{
+              backgroundColor: '#1e293b',
+              borderRadius: '0.5rem',
+              padding: '1.25rem',
+              marginBottom: '1rem',
+              borderLeft: '4px solid #7c3aed',
+              transition: 'all 0.2s ease'
+            }}
           >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://turborepo.com/docs?utm_source"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-        <Button appName="web" className={styles.secondary}>
-          Open alert
-        </Button>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '0.75rem'
+            }}>
+              <h2 style={{
+                fontSize: '1.125rem',
+                fontWeight: '600',
+                color: '#f8fafc',
+                margin: 0
+              }}>{user.username}</h2>
+              <span style={{
+                fontSize: '0.75rem',
+                color: '#7c3aed',
+                backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                padding: '0.25rem 0.5rem',
+                borderRadius: '9999px'
+              }}>Active</span>
+            </div>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: '0.75rem'
+            }}>
+              <div>
+                <p style={{
+                  fontSize: '0.75rem',
+                  color: '#94a3b8',
+                  marginBottom: '0.25rem'
+                }}>User ID</p>
+                <p style={{
+                  color: '#e2e8f0',
+                  margin: 0,
+                  fontFamily: 'monospace'
+                }}>{user.id}</p>
+              </div>
+              
+              <div>
+                <p style={{
+                  fontSize: '0.75rem',
+                  color: '#94a3b8',
+                  marginBottom: '0.25rem'
+                }}>Password</p>
+                <p style={{
+                  color: '#e2e8f0',
+                  margin: 0,
+                  fontFamily: 'monospace',
+                  wordBreak: 'break-all'
+                }}>{user.password}</p>
+              </div>
+            </div>
+          </div>
+        ))}
       </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com/templates?search=turborepo&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://turborepo.com?utm_source=create-turbo"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to turborepo.com →
-        </a>
+
+      {/* Footer */}
+      <footer style={{
+        maxWidth: '800px',
+        margin: '2rem auto 0',
+        paddingTop: '1rem',
+        borderTop: '1px solid #1e293b',
+        textAlign: 'center',
+        color: '#64748b',
+        fontSize: '0.875rem'
+      }}>
+        © {new Date().getFullYear()} User Dashboard
       </footer>
     </div>
   );
