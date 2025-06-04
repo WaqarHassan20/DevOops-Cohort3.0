@@ -1,4 +1,4 @@
-name: Continuous Deployment for Backend
+name: Continuous Deployment for ws
 on:
   push:
     branches: [main]
