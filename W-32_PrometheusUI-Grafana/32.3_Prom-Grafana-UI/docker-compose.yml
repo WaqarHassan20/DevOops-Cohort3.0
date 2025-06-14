@@ -22,7 +22,7 @@ services:
     networks:
       - monitoring
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=myGrafanaPassword
 
 networks:
   monitoring:
