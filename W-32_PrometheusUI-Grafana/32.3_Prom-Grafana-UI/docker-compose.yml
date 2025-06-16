@@ -23,6 +23,8 @@ services:
       - monitoring
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=myGrafanaPassword
+      # Make the password quite strong at the start, else it will ask you to make it a bit strong password
+      # when you will first visit the grafana UI at http://localhost:3001
 
 networks:
   monitoring:
