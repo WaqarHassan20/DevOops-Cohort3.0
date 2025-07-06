@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backend-team 
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: backend-team
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image:  waqarhasan/backend-pg:1
+          env:
+            - name: DATABASE_URL
+              value: "postgres://postgres:postgres@db.default:5432/postgres"
+          ports:
+            - containerPort: 3000
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: backend-team
+spec:
+  selector:
+    app: backend
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+  type: ClusterIP
+
+
+# type: ClusterIP // to expose only inside the cluster //
+# type: load // to expose on the internet //
+
+
+# This YAML file defines three Kubernetes resources that work together to deploy and expose a backend application. First, it creates a namespace named backend-team, which acts like a logical folder to organize and isolate Kubernetes resources. Next, it defines a Deployment named backend that ensures two identical copies (replicas) of a pod are running. These pods use the Docker image 100xdevs/backend-pg:2 and expose port 3000 inside the container. Each pod is labeled with app: backend, which is important for linking it to the right service. Finally, a Service named backend is defined, which also lives in the backend-team namespace. This service looks for pods with the label app: backend and forwards requests to their port 3000. The service type is ClusterIP, which makes it accessible only within the Kubernetes cluster, enabling internal communication between other services and this backend.
+
+# # ---------- Namespace (kind: Namespace)-----------#
+# Creates a logical space called backend-team to keep related resources grouped and isolated.
+# Think of it like a folder where all your backend-related Kubernetes objects will live.
+
+# # ---------- Deployment (kind: Deployment) -----------#
+# Manages the application pods (in this case, 2 replicas of the backend container).
+# It makes sure that if a pod crashes, another one is automatically created.
+# The pods have the label app: backend.
+
+# # ---------- Service (kind: Service) ---------- #
+# Exposes the backend pods within the cluster so other apps or services can talk to them.
+# It selects the pods using the label app: backend and forwards traffic to port 3000.
+# Since it's of type ClusterIP, it is only reachable from inside the cluster.
+
+# # ---------- 🔸 In What Order They Work ---------- #
+# Namespace must be created first, because the Service references it and other resources may be created within it.
+# Deployment comes next — it creates the backend pods inside the cluster (though by default it is created in the default namespace unless explicitly set).
+# Service is defined last — it looks for the pods (created by the Deployment) with the label app: backend and routes traffic to them.
+
+
+# # ---------- ✅ Final Flow ---------- #
+# Namespace is created ➝
+# Deployment starts pods with a label ➝
+# Service connects to those pods using the label ➝
+# Other services inside the cluster can access the backend through the service name.
