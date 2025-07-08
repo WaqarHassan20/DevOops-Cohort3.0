@@ -1,0 +1,49 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-apps-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: week-36.100xdevs.com
+    http:
+      paths:
+      - path: /backend
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service
+            port:
+              number: 80
+      - path: /frontend
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 80
+
+
+
+
+
+# ✅ Working Paragraph for the Ingress YAML
+
+# This Ingress resource configures HTTP routing for two services: backend-service and frontend-service. It listens on the domain week-36.100xdevs.com and routes requests based on the URL path. When a request comes to /backend, it is forwarded to backend-service on port 80. Similarly, /frontend routes to frontend-service. The annotation nginx.ingress.kubernetes.io/rewrite-target: / ensures that the original path (like /backend) is stripped before being sent to the target service, effectively rewriting it to just /. The field ingressClassName: nginx tells Kubernetes that the NGINX Ingress Controller should handle this Ingress resource.
+
+
+# 🔄 How NGINX and the Controller Work Together
+# NGINX Ingress Controller is a Pod running inside the cluster.
+
+# It watches for Ingress resources using the Kubernetes API.
+
+# When it detects this Ingress definition, it updates its internal NGINX configuration to handle the specified routing.
+
+# When an external user sends a request to week-36.100xdevs.com/backend, the cloud LoadBalancer forwards the traffic to the NGINX Ingress Controller Pod.
+
+# The NGINX server inside the Pod looks at the path (/backend) and the host, matches it with the rules in the Ingress resource, and forwards the request to the correct service (backend-service).
+
+# This reverse proxy mechanism enables central routing without exposing every service individually.
