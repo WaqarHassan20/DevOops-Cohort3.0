@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecom-backend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ecom-backend
+  template:
+    metadata:
+      labels:
+        app: ecom-backend
+    spec:
+      containers:
+      - name: ecom-backend
+        image: waqarhasan/todo-app-test:3
+        ports:
+        - containerPort: 3000
+        volumeMounts:
+        - name: env-file
+          readOnly: true
+          mountPath: "/app/secret"
+      volumes:
+      - name: env-file
+        secret:
+          secretName: backend-secret
+
+
+# volume: kis ka volume bnana hai 
+# volumeMount: Kha bnana hai 
+
+# ✅ Corrected Understanding:
+# volumes defines the source of data (like a Secret, ConfigMap, or storage).
+# volumeMounts tells where to place that data inside the container’s file system.
+
+# 🔍 So in your words:
+# volumes does not store the file — it points to where the data comes from (e.g., a secret named backend-secret).
+
+# volumeMounts does not fetch the file itself — it tells Kubernetes where to mount that volume inside the container.
+
+# 🧠 Think of it like:
+# volumes = "This is the USB drive and where the files live (Secret)"
+
+# volumeMounts = "Plug this USB into the container at /app, read-only"
+
+# 📌 Summary:
+# volumes = defines the data source
+
+# volumeMounts = defines the mount location in the container
