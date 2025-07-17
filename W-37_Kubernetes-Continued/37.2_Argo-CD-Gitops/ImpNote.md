@@ -1,0 +1,1 @@
+This lesson was a whole different repository to create and push using the ops file and argocd for the auto deployment. So a different repo named as "argocd-deployment" is created at my github account. Explore that repo to understand all how the workflow file is making the deployment autonomous.
