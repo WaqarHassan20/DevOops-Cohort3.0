@@ -24,12 +24,11 @@ app.post("/user/signup", async (req, res) => {
         username: parsedData.data.username,
       },
     });
-    
+
     res.json({
       Message: "User created successfully",
       UserId: user.id,
     });
-
   } catch (error) {
     console.log(error);
      res.status(403).send({
