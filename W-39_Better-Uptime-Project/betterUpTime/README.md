@@ -1,3 +1,8 @@
+# Mismatched Argument Error : Finally explored a new kind of error but couldn't be able to figure it out by my own. Eventually GPT make it done for me.
+
+- [SS_of_Code](./zerror.png)
+
+
 # Turborepo starter
 
 This Turborepo starter is maintained by the Turborepo core team.
