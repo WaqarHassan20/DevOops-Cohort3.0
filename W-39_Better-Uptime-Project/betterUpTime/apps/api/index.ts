@@ -1,11 +1,13 @@
 import express from "express"
 import jwt from "jsonwebtoken";
 const app = express();
+import cors from "cors";
 import { client } from "store/client";
 import { AuthInput } from "./types";
 import { authMiddleware } from "./middleware";
 
 app.use(express.json());
+app.use(cors());
 
 app.post("/user/signup", async (req, res) => {
   const parsedData = AuthInput.safeParse(req.body);
@@ -112,7 +114,7 @@ app.get("/status/:websiteId", authMiddleware, async (req, res) => {
       include: {
         ticks: {
           orderBy: [{ createdAt: "desc" }],
-          take: 1,
+          take: 10,
         },
       },
   });
@@ -127,6 +129,18 @@ app.get("/status/:websiteId", authMiddleware, async (req, res) => {
   res.json({
     website,
   });
+});
+
+app.get("websites",authMiddleware,async (req, res) => {
+
+  const websites = await client.website.findMany({
+    where: { userId: req.userId },
+  });
+
+  res.json({
+    websites,
+  });
+
 });
 
 app.listen(process.env.PORT || 3001, () => {
