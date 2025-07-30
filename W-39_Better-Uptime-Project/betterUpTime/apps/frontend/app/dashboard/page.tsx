@@ -16,46 +16,6 @@ const Dashboard = () => {
   const websites = [
     {
       id: 1,
-      url: 'https://google.com',
-      name: 'google.com',
-      status: 'up',
-      lastChecked: '2 minutes ago',
-      uptime: '100%',
-      response: '124ms',
-      favicon: 'https://www.google.com/favicon.ico'
-    },
-    {
-      id: 2,
-      url: 'https://github.com',
-      name: 'github.com',
-      status: 'up',
-      lastChecked: '1 minute ago',
-      uptime: '100%',
-      response: '98ms',
-      favicon: 'https://github.com/favicon.ico'
-    },
-    {
-      id: 3,
-      url: 'https://example.com',
-      name: 'example.com',
-      status: 'down',
-      lastChecked: '5 minutes ago',
-      uptime: '87.3%',
-      response: '1.2s',
-      favicon: 'https://example.com/favicon.ico'
-    },
-    {
-      id: 4,
-      url: 'https://stackoverflow.com',
-      name: 'stackoverflow.com',
-      status: 'up',
-      lastChecked: '3 minutes ago',
-      uptime: '100%',
-      response: '210ms',
-      favicon: 'https://stackoverflow.com/favicon.ico'
-    },
-    {
-      id: 5,
       url: 'https://amazon.com',
       name: 'amazon.com',
       status: 'slow',
@@ -199,54 +159,6 @@ const Dashboard = () => {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-gray-400">Tracked Websites</p>
-                  <h3 className="text-2xl font-bold">12</h3>
-                </div>
-                <div className="p-3 rounded-full bg-blue-900/30 text-blue-400">
-                  <FiGlobe className="text-xl" />
-                </div>
-              </div>
-            </div>
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-gray-400">Online</p>
-                  <h3 className="text-2xl font-bold">10</h3>
-                </div>
-                <div className="p-3 rounded-full bg-green-900/30 text-green-400">
-                  <FiCheckCircle className="text-xl" />
-                </div>
-              </div>
-            </div>
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-gray-400">Offline</p>
-                  <h3 className="text-2xl font-bold">2</h3>
-                </div>
-                <div className="p-3 rounded-full bg-red-900/30 text-red-400">
-                  <FiAlertTriangle className="text-xl" />
-                </div>
-              </div>
-            </div>
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-gray-400">Avg. Response</p>
-                  <h3 className="text-2xl font-bold">342ms</h3>
-                </div>
-                <div className="p-3 rounded-full bg-yellow-900/30 text-yellow-400">
-                  <FiActivity className="text-xl" />
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Websites Table */}
           <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden mb-8">
             <div className="p-4 flex justify-between items-center border-b border-gray-700">
@@ -327,22 +239,6 @@ const Dashboard = () => {
                   Next
                 </button>
               </nav>
-            </div>
-          </div>
-
-          {/* Charts Placeholder */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <h3 className="text-lg font-semibold mb-4">Uptime Last 7 Days</h3>
-              <div className="h-64 bg-gray-700/50 rounded-lg flex items-center justify-center">
-                <p className="text-gray-400">Chart will be displayed here</p>
-              </div>
-            </div>
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <h3 className="text-lg font-semibold mb-4">Response Times</h3>
-              <div className="h-64 bg-gray-700/50 rounded-lg flex items-center justify-center">
-                <p className="text-gray-400">Chart will be displayed here</p>
-              </div>
             </div>
           </div>
         </main>
