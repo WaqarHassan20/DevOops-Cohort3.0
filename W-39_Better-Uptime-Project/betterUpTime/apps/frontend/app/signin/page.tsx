@@ -23,7 +23,8 @@ export default function Signin() {
         username: username,
         password: password
       })
-      localStorage.setItem("token", response.data.jwt)
+      localStorage.setItem("token", response.data.Token)
+      console.log(response.data.Token);
       router.push('/dashboard');  
     } catch (err) {
       if (err instanceof Error) {

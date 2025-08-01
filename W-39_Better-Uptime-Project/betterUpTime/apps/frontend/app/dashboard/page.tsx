@@ -1,86 +1,170 @@
 "use client"
-import { useState } from 'react';
-import { FiHome, FiPlusCircle, FiSettings, FiBarChart2, FiHelpCircle, FiLogOut, FiSearch, FiActivity, FiEdit2, FiTrash2, FiGlobe, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi';
+import { BACKEND_URL } from '@/lib/utils';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { FiHome, FiPlusCircle, FiSettings, FiSearch, FiActivity, FiCheckCircle, FiAlertTriangle, FiTrash } from 'react-icons/fi';
 
 const Dashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newWebsite, setNewWebsite] = useState({
-    url: '',
-    name: '',
-    interval: '5',
-    alerts: true,
-    email: 'user@example.com'
-  });
+  const [websiteUrl, setWebsiteUrl] = useState('');
 
-  const websites = [
-    {
-      id: 1,
-      url: 'https://amazon.com',
-      name: 'amazon.com',
-      status: 'slow',
-      lastChecked: '4 minutes ago',
-      uptime: '99.1%',
-      response: '856ms',
-      favicon: 'https://amazon.com/favicon.ico'
+  interface Tick {
+    status?: string;
+    response_time_ms?: number;
+    [key: string]: any;
+  }
+
+  interface Website {
+    id: string;
+    url: string;
+    name?: string;
+    status?: string;
+    response?: string;
+    ticks?: Tick[];
+    timeAdded?: string;
+    lastChecked?: string;
+  }
+
+  const [websites, setWebsites] = useState<Website[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // Fetch websites initially and set up polling
+  useEffect(() => {
+  
+    const fetchWebsites = async () => {
+  try {
+    // Check if we're on the client side
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem("token")
+      const response = await axios.get(`${BACKEND_URL}/websites`, {
+        headers: {
+          Authorization: token
+        }
+      });
+      setWebsites(response.data.websites.map((w: any) => ({
+        id: w.id,
+        url: w.url,
+        timeAdded: w.timeAdded,
+        ticks: w.ticks,
+        lastChecked: w.lastChecked
+        // status: w.ticks[0] ? (w.ticks[0].status == "Up" ? "up" : "down") : "checking",
+        // responseTime: w.ticks[0] ? w.ticks[0].response_time_ms : 0
+
+      })));
+      
+      setError('');
     }
-  ];
+  } catch (err) {
+    setError('Failed to fetch websites');
+    console.error('Error fetching websites:', err);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-  const handleAddWebsite = (e: React.FormEvent) => {
+    fetchWebsites(); // Initial fetch
+    const interval = setInterval(fetchWebsites, 60000); // Poll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleAddWebsite = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Adding website:', newWebsite);
-    setIsAddModalOpen(false);
-    // Here you would typically make an API call to your backend
+    if (!websiteUrl) return;
+
+    try {
+      setIsLoading(true);
+      const response = await axios.post(
+        `${BACKEND_URL}/website`,
+        { url: websiteUrl },
+        {
+          headers: {
+            Authorization: localStorage.getItem("token")
+          }
+        }
+      );
+      
+      // Clear form and close modal first
+      setWebsiteUrl('');
+      setIsAddModalOpen(false);
+      setError(''); // Clear any previous errors
+      
+      // Refresh websites list immediately to show the new website
+      try {
+        const fetchResponse = await axios.get(`${BACKEND_URL}/websites`, {
+          headers: {
+            Authorization: localStorage.getItem("token")
+          }
+        });
+        setWebsites(fetchResponse.data.websites);
+      } catch (fetchErr) {
+        console.error('Error refreshing websites:', fetchErr);
+        // Fallback: add the new website from response if refresh fails
+        if (response.data.website) {
+          setWebsites(prev => [...prev, response.data.website]);
+        }
+      }
+      
+    } catch (err) {
+      setError('Failed to add website');
+      console.error('Error adding website:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteWebsite = async (id: string) => {
+    try {
+      setIsLoading(true);
+      await axios.delete(`${BACKEND_URL}/websites/${id}`, {
+        headers: {
+          Authorization: localStorage.getItem("token")
+        }
+      });
+      setWebsites(websites.filter(website => website.id !== id));
+    } catch (err) {
+      setError('Failed to delete website');
+      console.error('Error deleting website:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'up':
-        return 'bg-green-500';
-      case 'down':
-        return 'bg-red-500';
-      case 'slow':
-        return 'bg-yellow-500';
-      default:
-        return 'bg-gray-500';
+      case 'up': return 'bg-green-500';
+      case 'down': return 'bg-red-500';
+      case 'slow': return 'bg-yellow-500';
+      default: return 'bg-gray-500';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'up':
-        return <FiCheckCircle className="mr-1" />;
-      case 'down':
-        return <FiAlertTriangle className="mr-1" />;
-      case 'slow':
-        return <FiAlertTriangle className="mr-1" />;
-      default:
-        return null;
+      case 'up': return <FiCheckCircle className="mr-1" />;
+      case 'down': return <FiAlertTriangle className="mr-1" />;
+      case 'slow': return <FiAlertTriangle className="mr-1" />;
+      default: return null;
     }
   };
 
-  const getUptimeColor = (uptime: string) => {
-    const value = parseFloat(uptime);
-    if (value >= 99) return 'text-green-400';
-    if (value >= 95) return 'text-yellow-400';
-    return 'text-red-400';
-  };
-
   const getResponseColor = (response: string) => {
+    if (!response) return 'text-gray-400';
     if (response.includes('ms')) {
       const value = parseInt(response);
       if (value < 200) return 'text-green-400';
       if (value < 500) return 'text-yellow-400';
       return 'text-red-400';
-    } else {
-      return 'text-red-400';
     }
+    return 'text-red-400';
   };
 
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
       {/* Sidebar */}
-      <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-gray-800 transition-all duration-300 ease-in-out flex flex-col`}>
+      <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-gray-800 transition-all duration-300 flex flex-col`}>
         <div className="p-4 flex items-center justify-center border-b border-gray-700">
           {isSidebarOpen ? (
             <h1 className="text-xl font-bold">SiteMonitor</h1>
@@ -91,52 +175,28 @@ const Dashboard = () => {
         <nav className="flex-1 p-4">
           <ul className="space-y-2">
             <li>
-              <a href="#" className="flex items-center p-2 rounded-lg bg-gray-700">
+              <button className="flex items-center w-full p-2 rounded-lg bg-gray-700">
                 <FiHome className="text-lg" />
                 {isSidebarOpen && <span className="ml-3">Dashboard</span>}
-              </a>
+              </button>
             </li>
             <li>
-              <a href="#" className="flex items-center p-2 rounded-lg hover:bg-gray-700">
+              <button 
+                onClick={() => setIsAddModalOpen(true)}
+                className="flex items-center w-full p-2 rounded-lg hover:bg-gray-700"
+              >
                 <FiPlusCircle className="text-lg" />
                 {isSidebarOpen && <span className="ml-3">Add Website</span>}
-              </a>
+              </button>
             </li>
             <li>
-              <a href="#" className="flex items-center p-2 rounded-lg hover:bg-gray-700">
+              <button className="flex items-center w-full p-2 rounded-lg hover:bg-gray-700">
                 <FiSettings className="text-lg" />
                 {isSidebarOpen && <span className="ml-3">Settings</span>}
-              </a>
-            </li>
-            <li>
-              <a href="#" className="flex items-center p-2 rounded-lg hover:bg-gray-700">
-                <FiBarChart2 className="text-lg" />
-                {isSidebarOpen && <span className="ml-3">Reports</span>}
-              </a>
-            </li>
-            <li>
-              <a href="#" className="flex items-center p-2 rounded-lg hover:bg-gray-700">
-                <FiHelpCircle className="text-lg" />
-                {isSidebarOpen && <span className="ml-3">Help</span>}
-              </a>
+              </button>
             </li>
           </ul>
         </nav>
-        <div className="p-4 border-t border-gray-700">
-          <div className="flex items-center">
-            <img 
-              src="https://via.placeholder.com/40" 
-              alt="User" 
-              className="w-8 h-8 rounded-full"
-            />
-            {isSidebarOpen && (
-              <div className="ml-3">
-                <p className="text-sm font-medium">John Doe</p>
-                <p className="text-xs text-gray-400">Admin</p>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Main Content */}
@@ -152,6 +212,7 @@ const Dashboard = () => {
           <button 
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg"
+            disabled={isLoading}
           >
             <FiPlusCircle className="mr-2" />
             Add Website
@@ -159,8 +220,13 @@ const Dashboard = () => {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          {/* Websites Table */}
-          <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden mb-8">
+          {error && (
+            <div className="mb-4 p-4 bg-red-500/20 text-red-300 rounded-lg">
+              {error}
+            </div>
+          )}
+          
+          <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
             <div className="p-4 flex justify-between items-center border-b border-gray-700">
               <h3 className="text-lg font-semibold">Tracked Websites</h3>
               <div className="relative">
@@ -178,67 +244,97 @@ const Dashboard = () => {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Website</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Response Time</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Last Checked</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Uptime (24h)</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Avg. Response</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
-                  {websites.map((site) => (
-                    <tr key={site.id} className="hover:bg-gray-700/50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <img src={site.favicon} alt={site.name} className="w-5 h-5 mr-3" />
-                          <a 
-                            href={site.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-400 hover:underline"
-                          >
-                            {site.name}
-                          </a>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(site.status)}`}>
-                          {getStatusIcon(site.status)}
-                          {site.status === 'up' ? 'Online' : site.status === 'down' ? 'Offline' : 'Slow'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-300">{site.lastChecked}</td>
-                      <td className={`px-6 py-4 whitespace-nowrap ${getUptimeColor(site.uptime)}`}>{site.uptime}</td>
-                      <td className={`px-6 py-4 whitespace-nowrap ${getResponseColor(site.response)}`}>{site.response}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex space-x-2">
-                          <button className="p-2 rounded-lg hover:bg-gray-600">
-                            <FiActivity className="text-blue-400" />
-                          </button>
-                          <button className="p-2 rounded-lg hover:bg-gray-600">
-                            <FiEdit2 className="text-yellow-400" />
-                          </button>
-                          <button className="p-2 rounded-lg hover:bg-gray-600">
-                            <FiTrash2 className="text-red-400" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                {isLoading && websites.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-4 text-center text-gray-400">
+                      Loading websites...
+                    </td>
+                  </tr>
+                ) : websites.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-4 text-center text-gray-400">
+                      No websites added yet
+                    </td>
+                  </tr>
+                ) : (
+                  websites.map((site) => {
+                    let displayName: string;
+                    let faviconUrl: string;
+                    try {
+                      displayName = site.name || new URL(site.url).hostname.replace('www.', '');
+                    } catch (e) {
+                      displayName = site.url;
+                    }
+                    faviconUrl = `https://www.google.com/s2/favicons?domain=${site.url}`;
+                    
+                    const latestTick = site.ticks?.[0];
+                    
+                    return (
+                      <tr key={site.id} className="hover:bg-gray-700/50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <img 
+                              src={faviconUrl}
+                              alt={displayName}
+                              className="w-5 h-5 mr-3" 
+                              onError={(e) => {
+                                e.currentTarget.src = `https://www.google.com/s2/favicons?domain=${site.url}`;
+                              }}
+                            />
+                            <a 
+                              href={site.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:underline"
+                            >
+                              {displayName}
+                            </a>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(site.status ?? '')}`}>
+                            {/* {getStatusIcon(site.status ?? '')} */}
+                            {/* {site.status === 'Up' ? 'Online' : site.status === 'Down' ? 'Offline' : site.status || 'Unknown'} */}
+                            {getStatusIcon(latestTick?.status ?? 'Unknown')}
+                            {latestTick?.status === 'Up' ? 'Online' : latestTick?.status === 'Down' ? 'Offline' : 'Unknown'}
+                          </span>
+                        </td>
+                        
+                        <td className={`px-6 py-4 whitespace-nowrap ${getResponseColor((latestTick?.response_time_ms ?? 0).toString() + 'ms')}`}>
+                        {latestTick?.response_time_ms ? `${latestTick.response_time_ms}ms` : '--'}
+                        </td>
+
+                        <td className={`px-6 py-4 whitespace-nowrap ${getResponseColor(site.response ?? '')}`}>
+                          {site.response || '--'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex space-x-2">
+                            <button 
+                              className="p-2 rounded-lg hover:bg-gray-600"
+                              onClick={() => window.open(site.url, '_blank')}
+                            >
+                              <FiActivity className="text-blue-400" />
+                            </button>
+                            <button 
+                              className="p-2 rounded-lg hover:bg-gray-600"
+                              onClick={() => handleDeleteWebsite(site.id)}
+                            >
+                              <FiTrash className="text-blue-400" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
                 </tbody>
               </table>
-            </div>
-            <div className="p-4 border-t border-gray-700 flex justify-end">
-              <nav className="flex items-center space-x-2">
-                <button className="px-3 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-50" disabled>
-                  Previous
-                </button>
-                <button className="px-3 py-1 rounded-lg bg-blue-600 text-white">1</button>
-                <button className="px-3 py-1 rounded-lg hover:bg-gray-700">2</button>
-                <button className="px-3 py-1 rounded-lg hover:bg-gray-700">3</button>
-                <button className="px-3 py-1 rounded-lg hover:bg-gray-700">
-                  Next
-                </button>
-              </nav>
             </div>
           </div>
         </main>
@@ -253,6 +349,7 @@ const Dashboard = () => {
               <button 
                 onClick={() => setIsAddModalOpen(false)}
                 className="text-gray-400 hover:text-white"
+                disabled={isLoading}
               >
                 ✕
               </button>
@@ -260,70 +357,17 @@ const Dashboard = () => {
             <form onSubmit={handleAddWebsite} className="p-4">
               <div className="mb-4">
                 <label htmlFor="url" className="block text-sm font-medium text-gray-300 mb-2">
-                  Website URL
+                  Website URL *
                 </label>
                 <input
                   type="url"
                   id="url"
-                  value={newWebsite.url}
-                  onChange={(e) => setNewWebsite({...newWebsite, url: e.target.value})}
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
                   placeholder="https://example.com"
                   className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
-                />
-              </div>
-              <div className="mb-4">
-                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-                  Display Name (optional)
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  value={newWebsite.name}
-                  onChange={(e) => setNewWebsite({...newWebsite, name: e.target.value})}
-                  placeholder="My Website"
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="mb-4">
-                <label htmlFor="interval" className="block text-sm font-medium text-gray-300 mb-2">
-                  Check Interval
-                </label>
-                <select
-                  id="interval"
-                  value={newWebsite.interval}
-                  onChange={(e) => setNewWebsite({...newWebsite, interval: e.target.value})}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="1">Every minute</option>
-                  <option value="5">Every 5 minutes</option>
-                  <option value="15">Every 15 minutes</option>
-                  <option value="30">Every 30 minutes</option>
-                  <option value="60">Every hour</option>
-                </select>
-              </div>
-              <div className="mb-4 flex items-center">
-                <input
-                  type="checkbox"
-                  id="alerts"
-                  checked={newWebsite.alerts}
-                  onChange={(e) => setNewWebsite({...newWebsite, alerts: e.target.checked})}
-                  className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="alerts" className="ml-2 text-sm text-gray-300">
-                  Enable email alerts
-                </label>
-              </div>
-              <div className="mb-4">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                  Alert Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  value={newWebsite.email}
-                  onChange={(e) => setNewWebsite({...newWebsite, email: e.target.value})}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isLoading}
                 />
               </div>
               <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700">
@@ -331,14 +375,16 @@ const Dashboard = () => {
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
                   className="px-4 py-2 rounded-lg border border-gray-600 hover:bg-gray-700"
+                  disabled={isLoading}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700"
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                  disabled={isLoading}
                 >
-                  Add Website
+                  {isLoading ? 'Adding...' : 'Add Website'}
                 </button>
               </div>
             </form>

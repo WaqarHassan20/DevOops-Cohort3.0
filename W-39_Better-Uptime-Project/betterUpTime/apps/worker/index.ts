@@ -1,5 +1,5 @@
 import axios from "axios";
-import { xReadGroup, xAck, xAckBulk } from "redisstream/client";
+import { xReadGroup, xAckBulk } from "redisstream/client";
 import { client } from "store/client";
 
 const REGION_ID = process.env.REGION_ID!;
@@ -27,7 +27,7 @@ async function main() {
   
   if (!response) {
       return;
-  }
+  } 
   
   let promises = await response.map(({ message }) =>
     fetchWebsite(message.url, message.id)

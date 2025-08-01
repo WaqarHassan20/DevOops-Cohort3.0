@@ -114,7 +114,7 @@ app.get("/status/:websiteId", authMiddleware, async (req, res) => {
       include: {
         ticks: {
           orderBy: [{ createdAt: "desc" }],
-          take: 10,
+          take: 1,
         },
       },
   });
@@ -131,8 +131,7 @@ app.get("/status/:websiteId", authMiddleware, async (req, res) => {
   });
 });
 
-app.get("websites",authMiddleware,async (req, res) => {
-
+app.get("/websites", authMiddleware, async (req, res) => {
   const websites = await client.website.findMany({
     where: { userId: req.userId },
   });
@@ -140,6 +139,35 @@ app.get("websites",authMiddleware,async (req, res) => {
   res.json({
     websites,
   });
+});
+
+app.delete("/websites/:id", authMiddleware, async (req, res) => {
+   try {
+    const websiteId = req.params.id;
+    const userId = req.userId;
+
+    const website = await client.website.findUnique({
+      where: { id: websiteId }
+    });
+
+    if (!website) {
+      return res.status(404).json({ error: "Website not found" });
+    }
+
+    if (website.userId !== userId) {
+      return res.status(403).json({ error: "Unauthorized to delete this website" });
+    }
+
+    await client.website.delete({
+      where: { id: websiteId }
+    });
+
+    res.status(204).end();
+
+  } catch (error) {
+    console.error("Delete website error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 
 });
 
