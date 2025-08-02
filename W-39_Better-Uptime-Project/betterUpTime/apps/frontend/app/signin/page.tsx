@@ -1,5 +1,5 @@
-"use client"
-import { useState } from 'react';
+"use client";
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Head from 'next/head';
@@ -11,21 +11,51 @@ export default function Signin() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const router = useRouter();
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (token) {
+          const response = await axios.get(`${BACKEND_URL}/websites`, {
+            headers: {
+              Authorization: token,
+            },
+          });
+
+          if (response.status === 200) {
+            router.push('/dashboard');
+            return;
+          }
+        }
+      } catch (err) {
+        localStorage.removeItem("token");
+        console.log('Token invalid or expired');
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
-      const response = await axios.post(`${BACKEND_URL}/user/signin`,{
-        username: username,
-        password: password
-      })
-      localStorage.setItem("token", response.data.Token)
+      const response = await axios.post(`${BACKEND_URL}/user/signin`, {
+        username,
+        password,
+      });
+
+      localStorage.setItem("token", response.data.Token);
       console.log(response.data.Token);
-      router.push('/dashboard');  
+      router.push('/dashboard');
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -37,16 +67,27 @@ export default function Signin() {
     }
   };
 
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center p-4">
       <Head>
         <title>Sign In | Your App</title>
       </Head>
-      
+
       <div className="w-full max-w-md">
         <div className="bg-gray-800 rounded-lg shadow-xl p-8">
           <h1 className="text-2xl font-bold text-center mb-6">Welcome Back</h1>
-          
+
           {error && (
             <div className="mb-4 p-3 bg-red-900/50 text-red-200 rounded text-sm">
               {error}
@@ -55,9 +96,9 @@ export default function Signin() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm mb-1">Username</label>
+              <label htmlFor="username" className="block text-sm mb-1">Username</label>
               <input
-                id="text"
+                id="username"
                 type="text"
                 required
                 value={username}

@@ -158,6 +158,12 @@ app.delete("/websites/:id", authMiddleware, async (req, res) => {
       return res.status(403).json({ error: "Unauthorized to delete this website" });
     }
 
+    // First delete all related WebsiteTick records
+    await client.websiteTick.deleteMany({
+      where: { website_id: websiteId }
+    });
+
+    // Then delete the website
     await client.website.delete({
       where: { id: websiteId }
     });

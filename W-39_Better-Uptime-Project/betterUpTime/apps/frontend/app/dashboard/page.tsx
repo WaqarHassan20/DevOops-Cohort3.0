@@ -1,398 +1,284 @@
 "use client"
-import { BACKEND_URL } from '@/lib/utils';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import { useEffect, useState } from 'react';
-import { FiHome, FiPlusCircle, FiSettings, FiSearch, FiActivity, FiCheckCircle, FiAlertTriangle, FiTrash } from 'react-icons/fi';
+import { BACKEND_URL } from '@/lib/utils';
+import { FiPlus, FiTrash2, FiExternalLink, FiLogOut, FiActivity, FiMonitor, FiShield } from 'react-icons/fi';
 
-const Dashboard = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [websiteUrl, setWebsiteUrl] = useState('');
+interface Website {
+  id: string;
+  url: string;
+  timeAdded: string;
+  ticks: Array<{
+    status: 'Up' | 'Down' | 'Unknown';
+    response_time_ms: number;
+    createdAt: string;
+  }>;
+}
 
-  interface Tick {
-    status?: string;
-    response_time_ms?: number;
-    [key: string]: any;
-  }
-
-  interface Website {
-    id: string;
-    url: string;
-    name?: string;
-    status?: string;
-    response?: string;
-    ticks?: Tick[];
-    timeAdded?: string;
-    lastChecked?: string;
-  }
-
+export default function Dashboard() {
   const [websites, setWebsites] = useState<Website[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [newUrl, setNewUrl] = useState('');
   const [error, setError] = useState('');
+  const router = useRouter();
 
-  // Fetch websites initially and set up polling
+  // Get auth headers
+  const getHeaders = () => ({
+    headers: { Authorization: localStorage.getItem("token") }
+  });
+
+  // Check authentication
   useEffect(() => {
-  
-    const fetchWebsites = async () => {
-  try {
-    // Check if we're on the client side
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem("token")
-      const response = await axios.get(`${BACKEND_URL}/websites`, {
-        headers: {
-          Authorization: token
-        }
-      });
-      setWebsites(response.data.websites.map((w: any) => ({
-        id: w.id,
-        url: w.url,
-        timeAdded: w.timeAdded,
-        ticks: w.ticks,
-        lastChecked: w.lastChecked
-        // status: w.ticks[0] ? (w.ticks[0].status == "Up" ? "up" : "down") : "checking",
-        // responseTime: w.ticks[0] ? w.ticks[0].response_time_ms : 0
-
-      })));
-      
-      setError('');
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push('/signin');
+      return;
     }
-  } catch (err) {
-    setError('Failed to fetch websites');
-    console.error('Error fetching websites:', err);
-  } finally {
-    setIsLoading(false);
-  }
-};
+    fetchWebsites();
+  }, [router]);
 
-    fetchWebsites(); // Initial fetch
-    const interval = setInterval(fetchWebsites, 60000); // Poll every 3 seconds
+  // Fetch websites
+  const fetchWebsites = async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/websites`, getHeaders());
+      setWebsites(response.data.websites);
+      setError('');
+    } catch (err) {
+      if (typeof err === 'object' && err !== null && 'response' in err && (err as any).response?.status === 401) {
+        localStorage.removeItem("token");
+        router.push('/signin');
+      } else {
+        setError('Failed to fetch websites');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleAddWebsite = async (e: React.FormEvent) => {
+  // Add website
+  const addWebsite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!websiteUrl) return;
+    if (!newUrl.trim()) return;
 
     try {
-      setIsLoading(true);
-      const response = await axios.post(
-        `${BACKEND_URL}/website`,
-        { url: websiteUrl },
-        {
-          headers: {
-            Authorization: localStorage.getItem("token")
-          }
-        }
-      );
-      
-      // Clear form and close modal first
-      setWebsiteUrl('');
-      setIsAddModalOpen(false);
-      setError(''); // Clear any previous errors
-      
-      // Refresh websites list immediately to show the new website
-      try {
-        const fetchResponse = await axios.get(`${BACKEND_URL}/websites`, {
-          headers: {
-            Authorization: localStorage.getItem("token")
-          }
-        });
-        setWebsites(fetchResponse.data.websites);
-      } catch (fetchErr) {
-        console.error('Error refreshing websites:', fetchErr);
-        // Fallback: add the new website from response if refresh fails
-        if (response.data.website) {
-          setWebsites(prev => [...prev, response.data.website]);
-        }
-      }
-      
+      setLoading(true);
+      await axios.post(`${BACKEND_URL}/website`, { url: newUrl }, getHeaders());
+      setNewUrl('');
+      await fetchWebsites();
     } catch (err) {
       setError('Failed to add website');
-      console.error('Error adding website:', err);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleDeleteWebsite = async (id: string) => {
+  // Delete website
+  const deleteWebsite = async (id: string) => {
     try {
-      setIsLoading(true);
-      await axios.delete(`${BACKEND_URL}/websites/${id}`, {
-        headers: {
-          Authorization: localStorage.getItem("token")
-        }
-      });
-      setWebsites(websites.filter(website => website.id !== id));
+      setLoading(true);
+      await axios.delete(`${BACKEND_URL}/websites/${id}`, getHeaders());
+      await fetchWebsites();
     } catch (err) {
       setError('Failed to delete website');
-      console.error('Error deleting website:', err);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'up': return 'bg-green-500';
-      case 'down': return 'bg-red-500';
-      case 'slow': return 'bg-yellow-500';
-      default: return 'bg-gray-500';
+  // Logout
+  const logout = () => {
+    localStorage.removeItem("token");
+    router.push('/signin');
+  };
+
+  // Get website status
+  const getStatus = (site: Website) => {
+    if (!site.ticks?.length) return { status: 'Unknown', time: '--', color: 'bg-gray-500' };
+    const latest = site.ticks[0];
+    const colors = {
+      Up: 'bg-green-500',
+      Down: 'bg-red-500',
+      Unknown: 'bg-gray-500'
+    };
+    return {
+      status: latest.status,
+      time: `${latest.response_time_ms}ms`,
+      color: colors[latest.status]
+    };
+  };
+
+  // Get display name from URL
+  const getDisplayName = (url: string) => {
+    try {
+      return new URL(url).hostname.replace('www.', '');
+    } catch {
+      return url;
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'up': return <FiCheckCircle className="mr-1" />;
-      case 'down': return <FiAlertTriangle className="mr-1" />;
-      case 'slow': return <FiAlertTriangle className="mr-1" />;
-      default: return null;
-    }
-  };
-
-  const getResponseColor = (response: string) => {
-    if (!response) return 'text-gray-400';
-    if (response.includes('ms')) {
-      const value = parseInt(response);
-      if (value < 200) return 'text-green-400';
-      if (value < 500) return 'text-yellow-400';
-      return 'text-red-400';
-    }
-    return 'text-red-400';
-  };
+  if (loading && websites.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <FiActivity className="animate-spin mx-auto mb-4 text-4xl" />
+          <p>Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen bg-gray-900 text-gray-100">
-      {/* Sidebar */}
-      <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-gray-800 transition-all duration-300 flex flex-col`}>
-        <div className="p-4 flex items-center justify-center border-b border-gray-700">
-          {isSidebarOpen ? (
-            <h1 className="text-xl font-bold">SiteMonitor</h1>
-          ) : (
-            <span className="text-2xl">🔍</span>
-          )}
+    <div className="min-h-screen bg-gray-900 text-white p-6">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-4">
+          {/* Logo and Title */}
+          <div className="relative">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
+              <FiShield className="text-white text-2xl" />
+            </div>
+            {/* Pulse animation for online indicator */}
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full animate-pulse border-2 border-gray-900"></div>
+          </div>
+          
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              UpTime Monitor
+            </h1>
+            <p className="text-gray-400 text-sm">Keep your websites online 24/7</p>
+          </div>
         </div>
-        <nav className="flex-1 p-4">
-          <ul className="space-y-2">
-            <li>
-              <button className="flex items-center w-full p-2 rounded-lg bg-gray-700">
-                <FiHome className="text-lg" />
-                {isSidebarOpen && <span className="ml-3">Dashboard</span>}
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={() => setIsAddModalOpen(true)}
-                className="flex items-center w-full p-2 rounded-lg hover:bg-gray-700"
-              >
-                <FiPlusCircle className="text-lg" />
-                {isSidebarOpen && <span className="ml-3">Add Website</span>}
-              </button>
-            </li>
-            <li>
-              <button className="flex items-center w-full p-2 rounded-lg hover:bg-gray-700">
-                <FiSettings className="text-lg" />
-                {isSidebarOpen && <span className="ml-3">Settings</span>}
-              </button>
-            </li>
-          </ul>
-        </nav>
+
+        <button
+          onClick={logout}
+          className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-lg hover:shadow-red-500/25"
+        >
+          <FiLogOut />
+          Logout
+        </button>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-gray-800 p-4 flex items-center justify-between border-b border-gray-700">
-          <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 rounded-lg hover:bg-gray-700"
+      {/* Add Website Form */}
+      <div className="bg-gray-800 rounded-lg p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Add New Website</h2>
+        <form onSubmit={addWebsite} className="flex gap-4">
+          <input
+            type="url"
+            value={newUrl}
+            onChange={(e) => setNewUrl(e.target.value)}
+            placeholder="https://example.com"
+            className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors"
           >
-            ☰
-          </button>
-          <h2 className="text-xl font-semibold">Dashboard</h2>
-          <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg"
-            disabled={isLoading}
-          >
-            <FiPlusCircle className="mr-2" />
+            <FiPlus />
             Add Website
           </button>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-6">
-          {error && (
-            <div className="mb-4 p-4 bg-red-500/20 text-red-300 rounded-lg">
-              {error}
-            </div>
-          )}
-          
-          <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-            <div className="p-4 flex justify-between items-center border-b border-gray-700">
-              <h3 className="text-lg font-semibold">Tracked Websites</h3>
-              <div className="relative">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search websites..." 
-                  className="bg-gray-700 pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-700">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Website</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Response Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Last Checked</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700">
-                {isLoading && websites.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-4 text-center text-gray-400">
-                      Loading websites...
-                    </td>
-                  </tr>
-                ) : websites.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-4 text-center text-gray-400">
-                      No websites added yet
-                    </td>
-                  </tr>
-                ) : (
-                  websites.map((site) => {
-                    let displayName: string;
-                    let faviconUrl: string;
-                    try {
-                      displayName = site.name || new URL(site.url).hostname.replace('www.', '');
-                    } catch (e) {
-                      displayName = site.url;
-                    }
-                    faviconUrl = `https://www.google.com/s2/favicons?domain=${site.url}`;
-                    
-                    const latestTick = site.ticks?.[0];
-                    
-                    return (
-                      <tr key={site.id} className="hover:bg-gray-700/50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <img 
-                              src={faviconUrl}
-                              alt={displayName}
-                              className="w-5 h-5 mr-3" 
-                              onError={(e) => {
-                                e.currentTarget.src = `https://www.google.com/s2/favicons?domain=${site.url}`;
-                              }}
-                            />
-                            <a 
-                              href={site.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-400 hover:underline"
-                            >
-                              {displayName}
-                            </a>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(site.status ?? '')}`}>
-                            {/* {getStatusIcon(site.status ?? '')} */}
-                            {/* {site.status === 'Up' ? 'Online' : site.status === 'Down' ? 'Offline' : site.status || 'Unknown'} */}
-                            {getStatusIcon(latestTick?.status ?? 'Unknown')}
-                            {latestTick?.status === 'Up' ? 'Online' : latestTick?.status === 'Down' ? 'Offline' : 'Unknown'}
-                          </span>
-                        </td>
-                        
-                        <td className={`px-6 py-4 whitespace-nowrap ${getResponseColor((latestTick?.response_time_ms ?? 0).toString() + 'ms')}`}>
-                        {latestTick?.response_time_ms ? `${latestTick.response_time_ms}ms` : '--'}
-                        </td>
-
-                        <td className={`px-6 py-4 whitespace-nowrap ${getResponseColor(site.response ?? '')}`}>
-                          {site.response || '--'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex space-x-2">
-                            <button 
-                              className="p-2 rounded-lg hover:bg-gray-600"
-                              onClick={() => window.open(site.url, '_blank')}
-                            >
-                              <FiActivity className="text-blue-400" />
-                            </button>
-                            <button 
-                              className="p-2 rounded-lg hover:bg-gray-600"
-                              onClick={() => handleDeleteWebsite(site.id)}
-                            >
-                              <FiTrash className="text-blue-400" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </main>
+        </form>
       </div>
 
-      {/* Add Website Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-md">
-            <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Add New Website</h3>
-              <button 
-                onClick={() => setIsAddModalOpen(false)}
-                className="text-gray-400 hover:text-white"
-                disabled={isLoading}
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleAddWebsite} className="p-4">
-              <div className="mb-4">
-                <label htmlFor="url" className="block text-sm font-medium text-gray-300 mb-2">
-                  Website URL *
-                </label>
-                <input
-                  type="url"
-                  id="url"
-                  value={websiteUrl}
-                  onChange={(e) => setWebsiteUrl(e.target.value)}
-                  placeholder="https://example.com"
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-gray-600 hover:bg-gray-700"
-                  disabled={isLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Adding...' : 'Add Website'}
-                </button>
-              </div>
-            </form>
-          </div>
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg mb-6">
+          {error}
+          <button onClick={() => setError('')} className="float-right">×</button>
         </div>
       )}
+
+      {/* Websites List */}
+      <div className="bg-gray-800 rounded-lg overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-700">
+          <h2 className="text-xl font-semibold">Monitored Websites ({websites.length})</h2>
+        </div>
+
+        {websites.length === 0 ? (
+          <div className="p-8 text-center text-gray-400">
+            <FiActivity className="mx-auto mb-4 text-4xl" />
+            <p>No websites added yet. Add your first website above!</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-300">Website</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-300">Status</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-300">Response Time</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-300">Last Check</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-300">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                {websites.map((site) => {
+                  const status = getStatus(site);
+                  const displayName = getDisplayName(site.url);
+                  const favicon = `https://www.google.com/s2/favicons?domain=${site.url}`;
+                  
+                  return (
+                    <tr key={site.id} className="hover:bg-gray-700/50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <img 
+                            src={favicon} 
+                            alt="" 
+                            className="w-5 h-5"
+                            onError={(e) => e.currentTarget.style.display = 'none'}
+                          />
+                          <div>
+                            <div className="font-medium">{displayName}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white ${status.color}`}>
+                          {status.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {status.time}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-400">
+                        {site.ticks?.[0]?.createdAt ? 
+                          new Date(site.ticks[0].createdAt).toLocaleString() : 
+                          'Never'
+                        }
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => window.open(site.url, '_blank')}
+                            className="p-2 text-blue-400 hover:text-blue-300 hover:bg-gray-700 rounded"
+                            title="Visit website"
+                          >
+                            <FiExternalLink />
+                          </button>
+                          <button
+                            onClick={() => deleteWebsite(site.id)}
+                            className="p-2 text-red-400 hover:text-red-300 hover:bg-gray-700 rounded"
+                            title="Delete website"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Auto-refresh indicator */}
+      <div className="mt-6 text-center text-gray-500 text-sm">
+        {loading && <span>Refreshing data...</span>}
+      </div>
     </div>
   );
-};
-
-export default Dashboard;
+}
