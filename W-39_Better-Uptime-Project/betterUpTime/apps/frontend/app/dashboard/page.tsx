@@ -42,6 +42,7 @@ export default function Dashboard() {
   const fetchWebsites = async () => {
     try {
       const response = await axios.get(`${BACKEND_URL}/websites`, getHeaders());
+      console.log('API Response:', response.data); // Debug log
       setWebsites(response.data.websites);
       setError('');
     } catch (err) {
@@ -94,8 +95,13 @@ export default function Dashboard() {
 
   // Get website status
   const getStatus = (site: Website) => {
+    console.log('Site data:', site); // Debug log
+    console.log('Site ticks:', site.ticks); // Debug log
+    
     if (!site.ticks?.length) return { status: 'Unknown', time: '--', color: 'bg-gray-500' };
     const latest = site.ticks[0];
+    console.log('Latest tick:', latest); // Debug log
+    
     const colors = {
       Up: 'bg-green-500',
       Down: 'bg-red-500',

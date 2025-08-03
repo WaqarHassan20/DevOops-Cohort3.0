@@ -134,6 +134,12 @@ app.get("/status/:websiteId", authMiddleware, async (req, res) => {
 app.get("/websites", authMiddleware, async (req, res) => {
   const websites = await client.website.findMany({
     where: { userId: req.userId },
+    include: {
+      ticks: {
+        orderBy: [{ createdAt: "desc" }],
+        take: 1,
+      },
+    },
   });
 
   res.json({
